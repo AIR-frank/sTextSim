@@ -3,6 +3,7 @@ import os
 import json
 import torch
 import random
+import csv
 from tqdm import tqdm
 from torch.utils.data import Dataset
 
@@ -23,11 +24,14 @@ class CLDataset(Dataset):
             random.shuffle(self.random_list)
 
     def load_train(self, file_name):
-        is_json = 'txt'
+        is_json = None
         if file_name.endswith('json'):
             is_json = 'json'
-        if file_name.endswith('jsonl'):
+        elif file_name.endswith('jsonl'):
             is_json = 'jsonl'
+        elif file_name.endswith('csv'):
+            is_json = 'csv'  # 添加对 CSV 文件的支持
+
         if is_json == 'json':
             with open(file_name, encoding='utf-8') as f:
                 ori_data = json.load(f)
@@ -36,6 +40,19 @@ class CLDataset(Dataset):
             with open(file_name, encoding='utf-8') as f:
                 for line in f:
                     ori_data.append(json.loads(line))
+        elif is_json == 'csv':  # 处理 CSV 文件
+            ori_data = []
+            with open(file_name, encoding='utf-8') as f:
+                reader = csv.reader(f)
+                for line in reader:
+                    l = {
+                        'text1': line[0]
+                    }
+                    if len(line) > 1:
+                        l['text2'] = line[1]
+                    if len(line) > 2:
+                        l['label'] = line[3]
+                    ori_data.append(l)
         else:
             with open(file_name, encoding='utf-8') as f:
                 _ori_data = f.read().split('\n')
@@ -59,7 +76,7 @@ class CLDataset(Dataset):
         if not self.is_eval:
             for line in ori_data:
                 if 'label' in line:
-                    if line['label'] == '0':
+                    if line['label'] <= '2':
                         line['neg'] = line['text2']
                         line['text2'] = line['text1']
                     else:
